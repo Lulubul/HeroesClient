@@ -17,17 +17,10 @@ namespace Assets.Scripts.Controller
             Application.LoadLevel("Client");
         }
 
-        public void SinglePlayer()
-        {
-            _gameFlow.MessageType = MessageType.Local;
-            Application.LoadLevel("Campain");
-        }
-
         public void Exit()
         {
             Application.Quit();
         }
-
 
 
     }

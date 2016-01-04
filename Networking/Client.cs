@@ -27,7 +27,7 @@ namespace Assets.Scripts.Networking
         private Handler _handler;
 
         private UnitsSelected _unitsSelected;
-        private int lastOpenedCreaturePanelIndex = -1;
+        private int _lastOpenedCreaturePanelIndex = -1;
 
         public void Start()
         {
@@ -90,6 +90,7 @@ namespace Assets.Scripts.Networking
             parameters.Add(room);
             var remoteMethod = new RemoteInvokeMethod(Command.Create, parameters);
             BeginSendPackage(remoteMethod);
+            Helper.StartButton.SetActive(true);
         }
 
         public void Join(string roomName)
@@ -100,6 +101,8 @@ namespace Assets.Scripts.Networking
             parameters.Add(room);
             var remoteMethod = new RemoteInvokeMethod(Command.Join, parameters);
             BeginSendPackage(remoteMethod);
+            Helper.StartButton.SetActive(false);
+
         }
 
         public void Leave()
@@ -137,7 +140,7 @@ namespace Assets.Scripts.Networking
 
         public void OpenCreatureChooser(int index)
         {
-            lastOpenedCreaturePanelIndex = index;
+            _lastOpenedCreaturePanelIndex = index;
             Helper.CreatureSelectors.SetActive(true);
         }
 
@@ -151,13 +154,29 @@ namespace Assets.Scripts.Networking
             _unitsSelected.HeroName = name;
             Helper.UnitButtonSelectors[0].sprite = Helper.HeroImages.SingleOrDefault(x=> x.Name == name).Image;
             Helper.HeroSelectors.SetActive(false);
+            if (IsAllCreaturesSelected())
+            {
+                Helper.FinishSelectUnitsButton.SetActive(true);
+            }
         }
 
         public void SelectCreature(string name)
         {
-            _unitsSelected.CreaturesName[lastOpenedCreaturePanelIndex] = name;
-            Helper.UnitButtonSelectors[lastOpenedCreaturePanelIndex].sprite = Helper.CreatureImages.SingleOrDefault(x => x.Name == name).Image;
+            _unitsSelected.CreaturesName[_lastOpenedCreaturePanelIndex] = name;
+            Helper.UnitButtonSelectors[_lastOpenedCreaturePanelIndex].sprite = Helper.CreatureImages.SingleOrDefault(x => x.Name == name).Image;
             Helper.CreatureSelectors.SetActive(false);
+
+            if (IsAllCreaturesSelected())
+            {
+                Helper.FinishSelectUnitsButton.SetActive(true);
+            }
+        }
+
+        private bool IsAllCreaturesSelected()
+        {
+            var isCreaturesSelected = _unitsSelected.CreaturesName.Values.Count > 3;
+            var isHeroSelected = !string.IsNullOrEmpty(_unitsSelected.HeroName);
+            return isCreaturesSelected && isHeroSelected;
         }
 
         public void SelectUnits()

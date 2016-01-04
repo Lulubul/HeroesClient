@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using LitJson;
 using NetworkTypes;
+using Newtonsoft.Json;
 
 namespace Assets.Scripts.Networking
 {
@@ -63,7 +62,7 @@ namespace Assets.Scripts.Networking
                 writer.Write(type.ToString());
                 if (UseJsonSerialization)
                 {
-                    writer.Write(JsonMapper.ToJson(parameter));
+                    writer.Write(JsonConvert.SerializeObject(parameter));
                     continue;
                 }
                 parameter.Serialize(writer, type, parameter);
@@ -102,16 +101,8 @@ namespace Assets.Scripts.Networking
 
         public static SerializableType JsonToObject(string json, Type type)
         {
-            var methods = typeof(JsonMapper).GetMethods();
-            foreach (var method in methods)
-            {
-                if (method.IsGenericMethod && method.Name == "ToObject" && method.GetParameters().Any(x=> x.ParameterType == typeof(string)))
-                {
-                    var generic = method.MakeGenericMethod(type);
-                    return generic.Invoke(null, new object[] { json }) as SerializableType;
-                }
-            }
-            return new SerializableType();
+            return JsonConvert.DeserializeObject(json, type) as SerializableType;
         }
+
     }
 }

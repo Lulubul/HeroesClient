@@ -28,7 +28,8 @@
         Defend,
         GameIsReady,
         SelectUnits,
-        SendUnits
+        SendUnits,
+        EndGame
     };
 
     public enum Response

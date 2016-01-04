@@ -10,7 +10,8 @@ public class CreatureHelper : MonoBehaviour
     public GameObject AttackMelee;
     public GameObject AttackRange;
     public GameObject Canvas;
-    public GameObject DeathIcon;
+    public Image DeathIcon;
+    public GameObject GoToLobby;
     public List<AbstractCreature> Creatures;
     public List<GameObject> BlueTeam;
     public List<GameObject> RedTeam;

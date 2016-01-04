@@ -32,6 +32,10 @@ public class GamblerHelper : MonoBehaviour
     public GameObject UnitPrefab;
     public GameObject CreaturePanel;
 
+
+    public GameObject StartButton;
+    public GameObject FinishSelectUnitsButton;
+
     public List<Image> UnitButtonSelectors = new List<Image>(); 
 
     public Queue<Action> ExecuteOnMainThread;
@@ -96,11 +100,11 @@ public class GamblerHelper : MonoBehaviour
             {
                 var creature = serializableType as CreatureInfo;
                 var unitUi = Instantiate(UnitPrefab);
-                var button = unitUi.transform.GetChild(0);
+                var button = unitUi.transform.GetChild(1);
                 button.GetComponent<Image>().sprite =
                     CreatureImages.SingleOrDefault(x => x.Name == creature.Name).Image;
                 button.GetComponent<Button>().onClick.AddListener(delegate { SelectCreature(creature.Name); });
-                unitUi.transform.GetChild(1).GetComponent<Text>().text = GetCreatureInfo(creature);
+                unitUi.transform.GetChild(2).GetComponent<Text>().text = GetCreatureInfo(creature);
                 unitUi.transform.SetParent(CreaturePanel.transform);
             }
         });
@@ -115,11 +119,11 @@ public class GamblerHelper : MonoBehaviour
             {
                 var hero = serializableType as HeroInfo;
                 var unitUi = Instantiate(UnitPrefab);
-                var button = unitUi.transform.GetChild(0);
+                var button = unitUi.transform.GetChild(1);
                 button.GetComponent<Image>().sprite =
                     HeroImages.SingleOrDefault(x => x.Name == hero.Name).Image;
                 button.GetComponent<Button>().onClick.AddListener(delegate { SelectHero(hero.Name); });
-                unitUi.transform.GetChild(1).GetComponent<Text>().text = GetHeroInfo(hero);
+                unitUi.transform.GetChild(2).GetComponent<Text>().text = GetHeroInfo(hero);
                 unitUi.transform.SetParent(HeroPanel.transform);
             }
         });

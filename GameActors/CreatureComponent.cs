@@ -20,13 +20,14 @@ namespace GameActors
 
         public Text _textComponent;
         private int _current;
-        private float _moveSpeed;
+        private const float MoveSpeed = 12.0f;
         private bool _move;
         private bool _throwProjectile;
         private float _startTime;
         private float _journeyLength;
         private Vector3 _startMarker;
         private Vector3 _endMarker;
+
         public Animator _anim;
 
         public AttackBehavior behavior;
@@ -40,7 +41,7 @@ namespace GameActors
         public GamePiece Piece;
         public AbstractCreature Attributes;
         public Queue<Action> ExecuteOnMainThread;
-        private float damageTimeLeft = 0.0f;
+        private float _damageTimeLeft = 0.0f;
 
         public void Awake()
         {
@@ -90,7 +91,7 @@ namespace GameActors
             _endMarker =  Points[_current];
             _startMarker = transform.position;
             _journeyLength = Vector3.Distance(transform.position, _endMarker);
-            _moveSpeed = 12.0f;
+            
             _anim.SetFloat("speed", 1);
             _anim.CrossFade("walk", 0.1f);
             _move = true;
@@ -127,16 +128,16 @@ namespace GameActors
                 ExecuteOnMainThread.Dequeue().Invoke();
             }
 
-            if (damageTimeLeft > 0)
+            if (_damageTimeLeft > 0)
             {
-                damageTimeLeft -= Time.deltaTime;
+                _damageTimeLeft -= 0.1f;
                 return;
             }
 
-            if (damageTimeLeft < 0 && damageTimeLeft > -2)
+            if (_damageTimeLeft < 0 && _damageTimeLeft > -2)
             {
-                damageTimeLeft = -2;
-                ExecuteOnMainThread.Enqueue(() => { HideDamage(); });
+                _damageTimeLeft = -2;
+                ExecuteOnMainThread.Enqueue(HideDamage);
             }
         }
 
@@ -154,16 +155,10 @@ namespace GameActors
         {
             if (Status == CreatureStatus.Death) return;
             creatureHelper.Panel.SetActive(true);
-            float offset = 0;
-            if (transform.position.x > 22.0f)
-            {
-                offset = 5.0f;
-            }
             var myCanvas = creatureHelper.Canvas.GetComponent<Canvas>();
             var rect = myCanvas.transform as RectTransform;
             if (rect != null)
             {
-                rect.position += new Vector3(offset, 0.0f, 0.0f);
                 Vector2 position;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(rect, pos, myCanvas.worldCamera, out position);
                 creatureHelper.Panel.transform.position = myCanvas.transform.TransformPoint(position);
@@ -179,7 +174,7 @@ namespace GameActors
 
         public void Move() 
         {
-            var distCovered = (Time.time - _startTime) * _moveSpeed;
+            var distCovered = (Time.time - _startTime) * MoveSpeed;
             var fracJourney = distCovered / _journeyLength;
             transform.position = Vector3.Lerp(_startMarker, _endMarker, fracJourney);
             if (_current == Points.Count)
@@ -218,10 +213,9 @@ namespace GameActors
                 damage *= -1;
             }
             var totalHealth = (Attributes.Count - 1) * Attributes.MaxHealth + Attributes.Health - damage;
-            damageTimeLeft = 0.2f;
+            _damageTimeLeft = 0.2f;
             ExecuteOnMainThread.Enqueue(() =>
             {
-                Debug.Log("ReceiveDamage" + damage);
                 creatureHelper.DamageText.gameObject.SetActive(true);
                 creatureHelper.DamageText.text = "Damage: " + damage;
                 _textComponent.text = Attributes.Count.ToString();
@@ -235,7 +229,6 @@ namespace GameActors
 
             Attributes.Health = totalHealth % (Attributes.MaxHealth + 1);
             Attributes.Count = (int)totalHealth / Attributes.MaxHealth + 1;
-
         }
 
         public void Die()

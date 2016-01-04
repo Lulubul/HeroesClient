@@ -12,6 +12,7 @@ using UnityEngine.UI;
 using CreatureType = GameActors.CreatureType;
 using Team = NetworkTypes.Team;
 
+
 namespace Assets.Scripts.Controller
 {
     public class BoardBehaviorMultiplayer : MonoBehaviour
@@ -69,8 +70,8 @@ namespace Assets.Scripts.Controller
 
             MustAttack = false;
             _canMove = false;
-            _heroPosition = GetWorldCoordinates(-1, -1, 0);
-            _enemyHeroPosition = GetWorldCoordinates(_width, 0, 0);
+            _heroPosition = new Vector3(-10, 25, -10);
+            _enemyHeroPosition = new Vector3(55, 25, -10);
 
             GameFlow.Instance.Channel = new NetworkMessageChannel(_player);
             GameFlow.Instance.Channel.MoveCallback += DrawPath;
@@ -79,6 +80,7 @@ namespace Assets.Scripts.Controller
             GameFlow.Instance.Channel.Attack += Attack;
             GameFlow.Instance.Channel.GameIsReadyCallback += GameIsReady;
             GameFlow.Instance.Channel.DieCallback += Die;
+            GameFlow.Instance.Channel.FinishGame += FinishGame;
 
 
             Messenger<TileBehaviour>.AddListener("Tile selected", MoveCreatureToSelectedTile);
@@ -150,9 +152,7 @@ namespace Assets.Scripts.Controller
         public void ChangeTurn(NextTurn turn)
         {
             TileBehaviour.OnMove = false;
-            ExecuteOnMainThread.Enqueue(() => HighlightCurrentCreature(false, _currentCreature));
             _currentCreature = _creaturesComponent.SingleOrDefault(x => x.Index == turn.CreatureIndex);
-            ExecuteOnMainThread.Enqueue(() => HighlightCurrentCreature(true, _currentCreature));
 
             if (_currentCreature == null)
             {
@@ -175,6 +175,26 @@ namespace Assets.Scripts.Controller
             });
             ExecuteOnMainThread.Enqueue(CheckPath);
             _canMove = true;
+        }
+
+
+        public void FinishGame(NextTurn turn)
+        {
+            ExecuteOnMainThread.Enqueue(() =>
+            {
+                _creatureHelper.GoToLobby.SetActive(true);
+                if (GameFlow.Instance.IsGameCreator && turn.Team == Team.Red.ToString())
+                {
+                    Console.GetComponent<Text>().text = "Victory";
+                    return;
+                }
+                if (!GameFlow.Instance.IsGameCreator && turn.Team == Team.Blue.ToString())
+                {
+                    Console.GetComponent<Text>().text = "Victory";
+                    return;
+                }
+                Console.GetComponent<Text>().text = "Defeat";
+            });
         }
         #endregion
 
@@ -520,28 +540,12 @@ namespace Assets.Scripts.Controller
 
         private void DisableCreatureComponent(CreatureComponent creatureComponent, TileBehaviour tileBehavior)
         {
-            _creatureImageDictionary[creatureComponent.Attributes.Index].sprite = new Sprite();
+            _creatureImageDictionary[creatureComponent.Attributes.Index].sprite = _creatureHelper.DeathIcon.sprite;
             creatureComponent.gameObject.SetActive(false);
             creatureComponent.GetComponent<SphereCollider>().enabled = false;
             creatureComponent._textComponent.gameObject.SetActive(false);
             creatureComponent.Status = GameActors.CreatureStatus.Death;
             tileBehavior.ResetColor();
-        }
-
-        private void HighlightCurrentCreature(bool highlight, CreatureComponent creature)
-        {
-            if (creature == null)
-            {
-                return;
-            }
-
-            if (highlight)
-            {
-                _creatureImageDictionary[creature.Index].color = Color.magenta;
-                return;
-            }
-
-            _creatureImageDictionary[creature.Index].color = Color.white;
         }
 
         #endregion

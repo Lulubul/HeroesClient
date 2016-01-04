@@ -243,6 +243,11 @@ namespace Assets.Scripts.Networking
         {
             GameFlow.Instance.Channel.DieCallback(point[0] as Point);
         }
+
+        public void EndGame(List<SerializableType> turn)
+        {
+            GameFlow.Instance.Channel.FinishGame(turn[0] as NextTurn);
+        }
         #endregion
     }
 }

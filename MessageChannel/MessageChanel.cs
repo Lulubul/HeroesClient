@@ -16,6 +16,7 @@ namespace Events
     {
         public MovePieces MoveCallback;
         public ChangeTurn TurnCallback;
+        public ChangeTurn FinishGame;
         public SyncHeroes SyncHeroesCallback;
         public FinishAction GameIsReadyCallback;
         public AttackCallback Attack;
