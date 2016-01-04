@@ -13,6 +13,10 @@ namespace Assets.Scripts.Controller
         public MessageType MessageType;
         public MessageChannel Channel;
         public string RoomName;
+
+        public string PlayerLeftName;
+        public string PlayerRightName;
+
         public bool IsGameCreator;
 
         static GameFlow() {}

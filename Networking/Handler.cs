@@ -171,6 +171,10 @@ namespace Assets.Scripts.Networking
         public void Start(List<SerializableType> playerList)
         {
             GameFlow.Instance.MessageType = MessageType.Network;
+            var player1 = playerList[0] as Gambler;
+            var player2 = playerList[1] as Gambler;
+            GameFlow.Instance.PlayerLeftName = player1.Name;
+            GameFlow.Instance.PlayerRightName = player2.Name;
             _helper.ExecuteOnMainThread.Enqueue(() =>
             {
                 _helper.StartGame();

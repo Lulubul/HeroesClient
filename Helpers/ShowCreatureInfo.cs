@@ -7,22 +7,21 @@ public class ShowCreatureInfo : MonoBehaviour
 {
     public GameObject Panel;
     public CreatureHelper CreatureHelper;
-    public int Index;
+    public AbstractCreature Creature;
 
     public void ShowInfo()
     {
-        var creature = CreatureHelper.Creatures.SingleOrDefault(x => x.Index == Index);
-        if (creature == null || creature.Status == CreatureStatus.Death)
+        if (Creature == null || Creature.Status == CreatureStatus.Death)
         {
+            Panel.SetActive(false);
             return;
         }
-
         Panel.SetActive(true);
-        CreatureHelper.Count.text = creature.Count.ToString();
-        CreatureHelper.Armor.text = creature.Armor.ToString();
-        CreatureHelper.Health.text = creature.Health.ToString(CultureInfo.InvariantCulture);
-        CreatureHelper.Speed.text = creature.Speed.ToString();
-        CreatureHelper.Type.text = creature.Type.ToString();
+        CreatureHelper.Count.text = Creature.Count.ToString();
+        CreatureHelper.Armor.text = Creature.Armor.ToString();
+        CreatureHelper.Health.text = Creature.Health.ToString(CultureInfo.InvariantCulture);
+        CreatureHelper.Speed.text = Creature.Speed.ToString();
+        CreatureHelper.Type.text = Creature.Type.ToString();
     }
 
 }

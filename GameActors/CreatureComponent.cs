@@ -27,9 +27,7 @@ namespace GameActors
         private float _journeyLength;
         private Vector3 _startMarker;
         private Vector3 _endMarker;
-
         public Animator _anim;
-
         public AttackBehavior behavior;
         public CreatureType Type;
         public Team Team;
@@ -41,7 +39,10 @@ namespace GameActors
         public GamePiece Piece;
         public AbstractCreature Attributes;
         public Queue<Action> ExecuteOnMainThread;
-        private float _damageTimeLeft = 0.0f;
+        private float _damageTimeLeft = -2f;
+        private float _receiveDamageTime = -2f;
+        public GameObject ReceiveDamageSprite;
+        private bool _mustDie;
 
         public void Awake()
         {
@@ -50,19 +51,24 @@ namespace GameActors
                 _anim = transform.GetChild(0).GetComponent<Animator>();
             }
             Status = CreatureStatus.Alive;
-            creatureHelper = GameObject.Find("GameManager").GetComponent<CreatureHelper>();
+            var manager = GameObject.Find("GameManager");
+            if (manager != null)
+            {
+                creatureHelper = manager.GetComponent<CreatureHelper>();
+            }
             _current = 0;
             _move = false;
+
         }
 
         public void InitializeBehavior()
         {
+            var arrow = transform.GetChild(1).gameObject;
             if (Type == CreatureType.Melee)
             {
-                behavior = new AttackMelee(Attributes.Damage, creatureHelper.AttackMelee);
+                behavior = new AttackMelee(Attributes.Damage, creatureHelper.AttackMelee, arrow);
                 return;
             }
-            var arrow = transform.GetChild(1).gameObject;
             behavior = new AttackRange(Attributes.Damage, Attributes.Range, creatureHelper.AttackRange, arrow);
         }
 
@@ -72,6 +78,7 @@ namespace GameActors
             ArrangeUi();
             _textComponent = Text.GetComponent<Text>();
             _textComponent.text = Attributes.Count.ToString();
+
         }
 
         private void ArrangeUi()
@@ -111,7 +118,7 @@ namespace GameActors
                 Throw();
             }
 
-            if (behavior.Hit)
+            if (behavior != null && behavior.Hit)
             {
                 _throwProjectile = false;
                 behavior.Hit = false;
@@ -130,8 +137,7 @@ namespace GameActors
 
             if (_damageTimeLeft > 0)
             {
-                _damageTimeLeft -= 0.1f;
-                return;
+                _damageTimeLeft -= 0.01f;
             }
 
             if (_damageTimeLeft < 0 && _damageTimeLeft > -2)
@@ -139,11 +145,27 @@ namespace GameActors
                 _damageTimeLeft = -2;
                 ExecuteOnMainThread.Enqueue(HideDamage);
             }
+
+            if (_receiveDamageTime > 0f)
+            {
+                _receiveDamageTime -= 0.01f;
+            }
+
+            if (_receiveDamageTime < 0f && _receiveDamageTime > -2)
+            {
+                _receiveDamageTime = -2;
+                ExecuteOnMainThread.Enqueue(() =>
+                {
+                    _textComponent.text = Attributes.Count.ToString();
+                    ReceiveDamageSprite.SetActive(false);
+                });
+            }
         }
 
         private void HideDamage()
         {
             creatureHelper.DamageText.gameObject.SetActive(false);
+            ReceiveDamageSprite.SetActive(false);
         }
 
         private void Throw()
@@ -213,22 +235,21 @@ namespace GameActors
                 damage *= -1;
             }
             var totalHealth = (Attributes.Count - 1) * Attributes.MaxHealth + Attributes.Health - damage;
-            _damageTimeLeft = 0.2f;
+            _damageTimeLeft = 2f;
+
+            Attributes.Health = totalHealth <= 0 ? 0 : totalHealth % (Attributes.MaxHealth + 1);
+            Attributes.Count = totalHealth <= 0 ? 0 : (int)totalHealth / Attributes.MaxHealth + 1;
+
             ExecuteOnMainThread.Enqueue(() =>
             {
                 creatureHelper.DamageText.gameObject.SetActive(true);
                 creatureHelper.DamageText.text = "Damage: " + damage;
-                _textComponent.text = Attributes.Count.ToString();
             });
 
             if (totalHealth <= 0)
             {
-                Die();
-                return;
+                _mustDie = true;
             }
-
-            Attributes.Health = totalHealth % (Attributes.MaxHealth + 1);
-            Attributes.Count = (int)totalHealth / Attributes.MaxHealth + 1;
         }
 
         public void Die()
@@ -254,6 +275,27 @@ namespace GameActors
             if (DisplayPanel == false && TileBehaviour.OnMove == false)
             {
                 Messenger<CreatureComponent>.Broadcast("CreatureComponent Attack", this);
+            }
+        }
+
+        void OnTriggerEnter(Component other)
+        {
+            if (other.gameObject.name.Contains("goblin_arrow"))
+            {
+                var target = other.gameObject.transform.parent.GetComponent<CreatureComponent>().behavior.Target;
+                if (target.transform.position == transform.position)
+                {
+                    if (_mustDie)
+                    {
+                        Die();
+                    }
+                    ExecuteOnMainThread.Enqueue(() =>
+                    {
+                        ReceiveDamageSprite.SetActive(true);
+                    });
+                    _receiveDamageTime = 1f;
+                }
+                
             }
         }
     }

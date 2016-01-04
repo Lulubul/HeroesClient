@@ -15,6 +15,9 @@ public class CreatureHelper : MonoBehaviour
     public List<AbstractCreature> Creatures;
     public List<GameObject> BlueTeam;
     public List<GameObject> RedTeam;
+
+    public Text PlayerRight;
+    public Text PlayerLeft;
     public Text DamageText;
     public Text Type;
     public Text Armor;

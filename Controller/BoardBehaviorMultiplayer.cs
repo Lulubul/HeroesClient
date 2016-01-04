@@ -12,7 +12,6 @@ using UnityEngine.UI;
 using CreatureType = GameActors.CreatureType;
 using Team = NetworkTypes.Team;
 
-
 namespace Assets.Scripts.Controller
 {
     public class BoardBehaviorMultiplayer : MonoBehaviour
@@ -37,6 +36,7 @@ namespace Assets.Scripts.Controller
         public List<GameObject> Creatures;
         public GameObject Console;
         public GameObject Defend;
+        public GameObject Panel;
 
         private List<List<Tile>> _movementRange = new List<List<Tile>>();
         private bool _canMove;
@@ -82,18 +82,11 @@ namespace Assets.Scripts.Controller
             GameFlow.Instance.Channel.DieCallback += Die;
             GameFlow.Instance.Channel.FinishGame += FinishGame;
 
-
             Messenger<TileBehaviour>.AddListener("Tile selected", MoveCreatureToSelectedTile);
             Messenger<CreatureComponent>.AddListener("Action finish", FinishAction);
             Messenger<CreatureComponent>.AddListener("CreatureComponent Selected", MouseOverCreature);
             Messenger<CreatureComponent>.AddListener("CreatureComponent Exit", MouseExitCreature);
             Messenger<CreatureComponent>.AddListener("CreatureComponent Attack", MouseClickCreature);
-
-
-            var roomName = new SimpleMessage { Message = GameFlow.Instance.RoomName };
-            var parameters = new List<SerializableType> { roomName };
-            var remoteInvokeMethod = new RemoteInvokeMethod("", Command.InitializeBoard, parameters);
-            Client.BeginSendPackage(remoteInvokeMethod);
 
             _hero1Obj = Instantiate(Hero1Prefab) as GameObject;
             _hero2Obj = Instantiate(Hero2Prefab) as GameObject;
@@ -103,12 +96,19 @@ namespace Assets.Scripts.Controller
             _creaturePrefabDictionary.Add("Marksman", "GoblinHex");
             _creaturePrefabDictionary.Add("Troglodyte", "OrcHex");
 
+            _creatureHelper.PlayerLeft.text = GameFlow.Instance.PlayerLeftName;
+            _creatureHelper.PlayerRight.text = GameFlow.Instance.PlayerRightName;
+
             _imageDictionary = new Dictionary<NetworkTypes.CreatureType, Sprite>()
             {
                 { NetworkTypes.CreatureType.Range, _prefabCollector.CreatureImages.SingleOrDefault(x => x.Name == "Range").Image},
                 { NetworkTypes.CreatureType.Melee, _prefabCollector.CreatureImages.SingleOrDefault(x => x.Name == "Melee").Image}
             };
 
+            var roomName = new SimpleMessage { Message = GameFlow.Instance.RoomName };
+            var parameters = new List<SerializableType> { roomName };
+            var remoteInvokeMethod = new RemoteInvokeMethod("", Command.InitializeBoard, parameters);
+            Client.BeginSendPackage(remoteInvokeMethod);
         }
 
         public void Update()
@@ -177,7 +177,6 @@ namespace Assets.Scripts.Controller
             _canMove = true;
         }
 
-
         public void FinishGame(NextTurn turn)
         {
             ExecuteOnMainThread.Enqueue(() =>
@@ -196,6 +195,7 @@ namespace Assets.Scripts.Controller
                 Console.GetComponent<Text>().text = "Defeat";
             });
         }
+
         #endregion
 
         #region Sync Creatures
@@ -238,7 +238,13 @@ namespace Assets.Scripts.Controller
                 GenerateCreatures(_hero1);
                 GenerateCreatures(_hero2);
                 CreateBoard();
+                AttachPanel();
             });
+        }
+
+        public void AttachPanel()
+        {
+            Panel.transform.SetParent(Canvas.transform);
         }
 
         private void GenerateCreatures(Hero hero)
@@ -262,7 +268,7 @@ namespace Assets.Scripts.Controller
                 if (abstractCreature.Team == Team.Red)
                 {
                     var imageComponent = _creatureHelper.RedTeam[index].GetComponent<Image>();
-                    _creatureHelper.RedTeam[index].GetComponent<ShowCreatureInfo>().Index = creatureComponent.Index;
+                    _creatureHelper.RedTeam[index].GetComponent<ShowCreatureInfo>().Creature = abstractCreature;
                     imageComponent.sprite = _imageDictionary[abstractCreature.Type];
                     _creatureImageDictionary.Add(abstractCreature.Index, imageComponent);
                     _creatureHelper.Creatures.Add(creatureComponent.Attributes);
@@ -270,7 +276,7 @@ namespace Assets.Scripts.Controller
                 else
                 {
                     var imageComponent = _creatureHelper.BlueTeam[index].GetComponent<Image>();
-                    _creatureHelper.BlueTeam[index].GetComponent<ShowCreatureInfo>().Index = creatureComponent.Index;
+                    _creatureHelper.BlueTeam[index].GetComponent<ShowCreatureInfo>().Creature = abstractCreature;
                     imageComponent.sprite = _imageDictionary[abstractCreature.Type];
                     _creatureImageDictionary.Add(abstractCreature.Index, imageComponent);
                     _creatureHelper.Creatures.Add(creatureComponent.Attributes);
@@ -428,7 +434,7 @@ namespace Assets.Scripts.Controller
 
         public void MouseOverCreature(CreatureComponent creature)
         {
-            if (!IsTargetValid(creature))
+            if (!IsTargetValid(creature) || TileBehaviour.OnMove)
             {
                 return;
             }
