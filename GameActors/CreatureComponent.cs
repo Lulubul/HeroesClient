@@ -34,6 +34,7 @@ namespace GameActors
         public CreatureStatus Status;
         public List<Vector3> Points;
         public int Index;
+        public bool MustAttack = false;
 
         public static bool DisplayPanel;
         public GamePiece Piece;
@@ -78,14 +79,12 @@ namespace GameActors
             ArrangeUi();
             _textComponent = Text.GetComponent<Text>();
             _textComponent.text = Attributes.Count.ToString();
-
         }
 
         private void ArrangeUi()
         {
             Vector2 pos = transform.position;
             Vector2 viewportPoint = Camera.main.WorldToViewportPoint(pos);
-
             Text.anchorMin = viewportPoint;
             Text.anchorMax = viewportPoint; 
         }
@@ -106,7 +105,6 @@ namespace GameActors
 
         public void Update()
         {
-
             if (_move)
             {
                 Move();
@@ -118,23 +116,30 @@ namespace GameActors
                 Throw();
             }
 
-            if (behavior != null && behavior.Hit)
-            {
-                _throwProjectile = false;
-                behavior.Hit = false;
-                Messenger<CreatureComponent>.Broadcast("Action finish", this);
-            }
-
             if (_anim.GetCurrentAnimatorStateInfo(0).IsName("attack"))
             {
                 _anim.SetFloat("attack", 0);
+            }
+
+            SetTimers();
+
+            if (behavior != null && behavior.Hit)
+            {
+                behavior.Hit = false;
+                MustAttack = false;
+                _throwProjectile = false;
+                behavior.Target.GetComponent<CreatureComponent>().ReceiveDamage(behavior.Damage);
+                behavior.Target = null;
             }
 
             while (ExecuteOnMainThread.Count > 0)
             {
                 ExecuteOnMainThread.Dequeue().Invoke();
             }
+        }
 
+        private void SetTimers()
+        {
             if (_damageTimeLeft > 0)
             {
                 _damageTimeLeft -= 0.01f;
@@ -160,6 +165,7 @@ namespace GameActors
                     ReceiveDamageSprite.SetActive(false);
                 });
             }
+
         }
 
         private void HideDamage()
@@ -201,19 +207,28 @@ namespace GameActors
             transform.position = Vector3.Lerp(_startMarker, _endMarker, fracJourney);
             if (_current == Points.Count)
             {
-                _move = false;
-                transform.position = _endMarker;
                 _current = -1;
+                _move = false;
+                transform.position = _endMarker;                
                 Points.Clear();
                 Points.TrimExcess();
                 _anim.SetFloat("speed", 0);
-                if (!behavior.Hit)
+                if (MustAttack == false)
                 {
                     Messenger<CreatureComponent>.Broadcast("Action finish", this);
                 }
+                else
+                {
+                    MustAttack = false;
+                    var targetIndex = behavior.Target.GetComponent<CreatureComponent>().Index;
+                    GameFlow.Instance.Channel.AttackCreature(targetIndex, Index);
+                }
                 return;
             }
-            if (!(Vector3.Distance(transform.position, _endMarker) < 0.1f)) return;
+            if (!(Vector3.Distance(transform.position, _endMarker) < 0.1f))
+            {
+                return;
+            }
             _current++;
             Push(_current);
         }
@@ -242,14 +257,18 @@ namespace GameActors
 
             ExecuteOnMainThread.Enqueue(() =>
             {
+                ReceiveDamageSprite.SetActive(true);
+                _receiveDamageTime = 0.5f;
                 creatureHelper.DamageText.gameObject.SetActive(true);
                 creatureHelper.DamageText.text = "Damage: " + damage;
             });
 
             if (totalHealth <= 0)
             {
-                _mustDie = true;
+                Die();
+                return;
             }
+            Messenger<CreatureComponent>.Broadcast("Action finish", this);
         }
 
         public void Die()
@@ -280,23 +299,13 @@ namespace GameActors
 
         void OnTriggerEnter(Component other)
         {
-            if (other.gameObject.name.Contains("goblin_arrow"))
+            /*if (other.gameObject.name.Contains("goblin_arrow"))
             {
                 var target = other.gameObject.transform.parent.GetComponent<CreatureComponent>().behavior.Target;
-                if (target.transform.position == transform.position)
+                if (target != null && transform != null && target.transform.position == transform.position)
                 {
-                    if (_mustDie)
-                    {
-                        Die();
-                    }
-                    ExecuteOnMainThread.Enqueue(() =>
-                    {
-                        ReceiveDamageSprite.SetActive(true);
-                    });
-                    _receiveDamageTime = 1f;
                 }
-                
-            }
+            }*/
         }
     }
 }

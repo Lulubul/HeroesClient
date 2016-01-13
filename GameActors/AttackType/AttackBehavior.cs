@@ -9,13 +9,13 @@ namespace AttackType
 {
     public abstract class AttackBehavior
     {
-        protected double Damage;
+        public double Damage;
         protected double Range;
         protected GameObject AttackIcon;
         public GameObject Target;
         public bool Hit;
 
-        public virtual void Attack(int count, Vector3 position) {}
+        public virtual void Attack(Vector3 position) {}
         public virtual void MoveProjectile() {}
 
         public void DisplayAttackIcon(GameObject canvas)

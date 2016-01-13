@@ -22,7 +22,7 @@ namespace Events
         public AttackCallback Attack;
         public DieCreature DieCallback;
 
-        public virtual void MovePiece(Point location, Point start, Point destination) { }
+        public virtual void MovePiece(Point start, Point destination) { }
         public virtual void FinishAction() {}
         public virtual void DieCreature(CreatureComponent creature) { }
         public virtual void AttackCreature(int targetIndex, int creatureIndex) { }

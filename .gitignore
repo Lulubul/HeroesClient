@@ -1,1 +1,3 @@
 *.meta
+JsonNet/Newtonsoft.Json.dll.mdb
+JsonNet/Newtonsoft.Json.xml

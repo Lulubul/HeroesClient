@@ -2,7 +2,6 @@
 
 namespace Assets.Scripts.Controller
 {
-
     public enum GameType {Fast, Classic}
     public enum MessageType {Network, Local}
     public sealed class GameFlow

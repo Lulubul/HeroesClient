@@ -16,10 +16,10 @@ namespace Events
             Player = player;
         }
 
-        public override void MovePiece(Point location, Point start, Point destination)
+        public override void MovePiece(Point start, Point destination)
         {
             TileBehaviour.OnMove = true;
-            var parameters = new List<SerializableType> {location, start, destination};
+            var parameters = new List<SerializableType> {start, destination};
             var remoteMethod = new RemoteInvokeMethod("BoardBehavior", Command.Move, parameters);
             BeginSendPackage(remoteMethod);
         }

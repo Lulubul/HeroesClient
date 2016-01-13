@@ -5,12 +5,13 @@ namespace AttackType
 {
     public class AttackMelee : AttackBehavior
     {
-       private readonly GameObject _projectile;
+        private readonly GameObject _projectile;
         private float _startTime;
         private float _journeyLength;
         public readonly float ProjectileSpeed = 50.0f;
         private Vector3 _startMarker;
         private Vector3 _endMarker;
+        private Vector3 _lastPosition;
 
         public AttackMelee(double damage, GameObject attack, GameObject arrow)
         {
@@ -20,10 +21,11 @@ namespace AttackType
             Hit = false;
         }
 
-        public override void Attack(int count, Vector3 position)
+        public override void Attack(Vector3 position)
         {
             _projectile.SetActive(true);
             _projectile.transform.position = position;
+            _lastPosition = position;
             _startTime = Time.time;
             _startMarker = _projectile.transform.position;
             _endMarker = Target.transform.position;
@@ -34,10 +36,25 @@ namespace AttackType
         {
             var distCovered = (Time.time - _startTime) * ProjectileSpeed;
             var fracJourney = distCovered / _journeyLength;
-            _projectile.transform.position = Vector3.Lerp(_startMarker, _endMarker, fracJourney);
 
+            if (_startMarker != _startMarker || Target == null || _projectile.transform.position.x != _projectile.transform.position.x)
+            {
+                _projectile.transform.position = _lastPosition;
+                _projectile.SetActive(false);
+                Hit = true;
+                return;
+            }
+
+            if (!_projectile.activeSelf)
+            {
+                _projectile.transform.position = _lastPosition;
+                _projectile.SetActive(true);
+            }
+
+            _projectile.transform.position = Vector3.Lerp(_startMarker, _endMarker, fracJourney);
             if (!(Vector3.Distance(_projectile.transform.position, _endMarker) < 0.01)) return;
             _projectile.SetActive(false);
+            _projectile.transform.position = _lastPosition;
             Hit = true;
         }
     }

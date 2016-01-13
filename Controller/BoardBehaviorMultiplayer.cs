@@ -9,6 +9,7 @@ using NetworkTypes;
 using PathFinding;
 using UnityEngine;
 using UnityEngine.UI;
+using CreatureStatus = GameActors.CreatureStatus;
 using CreatureType = GameActors.CreatureType;
 using Team = NetworkTypes.Team;
 
@@ -37,6 +38,13 @@ namespace Assets.Scripts.Controller
         public GameObject Console;
         public GameObject Defend;
         public GameObject Panel;
+        public GameObject FinalPanel;
+        public GameObject WinMessage;
+        public GameObject CreatureCountPanel;
+        public GameObject LoseMessage;
+
+        private GameObject _hero1Obj;
+        private GameObject _hero2Obj;
 
         private List<List<Tile>> _movementRange = new List<List<Tile>>();
         private bool _canMove;
@@ -46,14 +54,12 @@ namespace Assets.Scripts.Controller
         private CreatureComponent _attackCreature;
         private PrefabCollector _prefabCollector;
         private LobbyPlayer _player;
-        private Vector3 _heroPosition;
-        private Vector3 _enemyHeroPosition;
+        private readonly Vector3 _heroPosition = new Vector3(-10, 25, 0);
+        private readonly Vector3 _enemyHeroPosition = new Vector3(55, 25, 0);
         private readonly List<CreatureComponent> _creaturesComponent = new List<CreatureComponent>();
         private readonly List<GamePiece> _gamePieces = new List<GamePiece>(); 
         public Queue<Action> ExecuteOnMainThread;
 
-        private GameObject _hero1Obj;
-        private GameObject _hero2Obj;
         private bool _isAllPlayersReady;
         private bool _isFirstRound;
         private CreatureHelper _creatureHelper;
@@ -70,8 +76,6 @@ namespace Assets.Scripts.Controller
 
             MustAttack = false;
             _canMove = false;
-            _heroPosition = new Vector3(-10, 25, -10);
-            _enemyHeroPosition = new Vector3(55, 25, -10);
 
             GameFlow.Instance.Channel = new NetworkMessageChannel(_player);
             GameFlow.Instance.Channel.MoveCallback += DrawPath;
@@ -133,7 +137,6 @@ namespace Assets.Scripts.Controller
 
         public void FinishAction(CreatureComponent creature)
         {
-            GameFlow.Instance.Channel.FinishAction();
             TileBehaviour.OnMove = false;
             _canMove = false;
             ExecuteOnMainThread.Enqueue(ResetState);
@@ -147,6 +150,9 @@ namespace Assets.Scripts.Controller
             _movementRange.Clear();
             _movementRange.TrimExcess();
             _path.ForEach(Destroy);
+            Console.GetComponent<Text>().text = "Block";
+            ExecuteOnMainThread.Enqueue(GameFlow.Instance.Channel.FinishAction);
+
         }
 
         public void ChangeTurn(NextTurn turn)
@@ -154,27 +160,23 @@ namespace Assets.Scripts.Controller
             TileBehaviour.OnMove = false;
             _currentCreature = _creaturesComponent.SingleOrDefault(x => x.Index == turn.CreatureIndex);
 
-            if (_currentCreature == null)
+            if (!IsYourTurn(_currentCreature))
             {
+                _canMove = false;
+                ExecuteOnMainThread.Enqueue(() => { UpdateTurnIterface("Enemy Turn"); });
                 return;
             }
 
-            if (!IsYourTurn(_currentCreature))
-            {
-                ExecuteOnMainThread.Enqueue(() =>
-                {
-                    _creatureHelper.AttackMelee.SetActive(false);
-                    _creatureHelper.AttackRange.SetActive(false);
-                    Console.GetComponent<Text>().text = "Enemy Turn";
-                });
-                return;
-            }
-            ExecuteOnMainThread.Enqueue(() =>
-            {
-                Console.GetComponent<Text>().text = "Your Turn";
-            });
-            ExecuteOnMainThread.Enqueue(CheckPath);
             _canMove = true;
+            ExecuteOnMainThread.Enqueue(() => { UpdateTurnIterface("Your Turn"); });
+            ExecuteOnMainThread.Enqueue(CheckPath);
+        }
+
+        private void UpdateTurnIterface(string consoleText)
+        {
+            _creatureHelper.AttackMelee.SetActive(false);
+            _creatureHelper.AttackRange.SetActive(false);
+            Console.GetComponent<Text>().text = consoleText;
         }
 
         public void FinishGame(NextTurn turn)
@@ -182,17 +184,15 @@ namespace Assets.Scripts.Controller
             ExecuteOnMainThread.Enqueue(() =>
             {
                 _creatureHelper.GoToLobby.SetActive(true);
-                if (GameFlow.Instance.IsGameCreator && turn.Team == Team.Red.ToString())
+                FinalPanel.SetActive(true);
+                if (GameFlow.Instance.IsGameCreator && turn.Team == Team.Red.ToString() ||
+                    !GameFlow.Instance.IsGameCreator && turn.Team == Team.Blue.ToString())
                 {
-                    Console.GetComponent<Text>().text = "Victory";
+                    LoseMessage.SetActive(true);
                     return;
                 }
-                if (!GameFlow.Instance.IsGameCreator && turn.Team == Team.Blue.ToString())
-                {
-                    Console.GetComponent<Text>().text = "Victory";
-                    return;
-                }
-                Console.GetComponent<Text>().text = "Defeat";
+
+                WinMessage.SetActive(true);
             });
         }
 
@@ -238,13 +238,7 @@ namespace Assets.Scripts.Controller
                 GenerateCreatures(_hero1);
                 GenerateCreatures(_hero2);
                 CreateBoard();
-                AttachPanel();
             });
-        }
-
-        public void AttachPanel()
-        {
-            Panel.transform.SetParent(Canvas.transform);
         }
 
         private void GenerateCreatures(Hero hero)
@@ -294,7 +288,7 @@ namespace Assets.Scripts.Controller
         private void AttachInfoText(CreatureComponent creatureComponent)
         {
             var text = Instantiate(TextPrefab);
-            text.transform.SetParent(Canvas.transform);
+            text.transform.SetParent(CreatureCountPanel.transform);
             creatureComponent.Text = text.GetComponent<RectTransform>();
             creatureComponent.Text.GetComponent<Text>().alignment = TextAnchor.UpperLeft;
             creatureComponent.Text.localPosition = new Vector3(0, 0, -2);
@@ -390,7 +384,6 @@ namespace Assets.Scripts.Controller
 
         private void CheckPath()
         {
-            TileBehaviour.OnMove = false;
             var start = _game.AllTiles.SingleOrDefault(o => o.X == _currentCreature.Piece.X && o.Y == _currentCreature.Piece.Y);
             _movementRange = PathFind.MovementRange(start, _currentCreature.Attributes.Speed);
             var movementTiles = _movementRange.SelectMany(t => t);
@@ -400,7 +393,7 @@ namespace Assets.Scripts.Controller
                 tile.TileHex.CanSelect = true;
                 tile.ChangeColor(Color.red);
             }
-            _tiles.Find(x => x.TileHex == start).ChangeColor(Color.cyan);
+            _tiles.SingleOrDefault(x => x.TileHex == start).ChangeColor(Color.cyan);
         }
 
         #endregion
@@ -490,6 +483,7 @@ namespace Assets.Scripts.Controller
                 var tileBehavior = _tiles.SingleOrDefault(x => x.TileHex == _selectedTile);
                 MoveCreatureToSelectedTile(tileBehavior);
                 MustAttack = true;
+                _currentCreature.MustAttack = true;
                 _selectedTile = null;
                 _attackCreature = null;
                 return;
@@ -507,11 +501,10 @@ namespace Assets.Scripts.Controller
 
         public void MoveCreatureToSelectedTile(TileBehaviour tileBehaviour)
         {
-            var location = _currentCreature.Piece.Location;
-            var start = location;
+            var start = _currentCreature.Piece.Location;
             var destination = new Point(tileBehaviour.TileHex.X, tileBehaviour.TileHex.Y);
             _currentCreature.Piece = new GamePiece(destination);
-            GameFlow.Instance.Channel.MovePiece(location, start, destination);
+            GameFlow.Instance.Channel.MovePiece(start, destination);
         }
 
         public void Attack(AttackModel attackInfo)
@@ -520,10 +513,10 @@ namespace Assets.Scripts.Controller
             var target = _creaturesComponent.SingleOrDefault(x => x.Index == attackInfo.TargetCreatureIndex);
             ExecuteOnMainThread.Enqueue(() =>
             {
-                _currentCreature.Attack();
+                _currentCreature.behavior.Damage = attackInfo.Damage;
                 _currentCreature.behavior.Target = target.gameObject;
-                _currentCreature.behavior.Attack(5, _currentCreature.transform.position);
-                target.ReceiveDamage(attackInfo.Damage);
+                _currentCreature.Attack();
+                _currentCreature.behavior.Attack(_currentCreature.transform.position);
                 _currentCreature._anim.SetFloat("attack", 1);
             });
         }
@@ -540,7 +533,7 @@ namespace Assets.Scripts.Controller
             if (tileBehavior == null) return;
             tileBehavior.TileHex.CanPass = true;
             tileBehavior.TileHex.CanSelect = true;
-            var creatureComponent = _creaturesComponent.SingleOrDefault(x => x.Piece.X == location.X && x.Piece.Y == location.Y);
+            var creatureComponent = _creaturesComponent.SingleOrDefault(x => x.Piece.X == location.X && x.Piece.Y == location.Y && x.Status == CreatureStatus.Alive);
             ExecuteOnMainThread.Enqueue(() => DisableCreatureComponent(creatureComponent, tileBehavior));
         }
 
@@ -550,8 +543,14 @@ namespace Assets.Scripts.Controller
             creatureComponent.gameObject.SetActive(false);
             creatureComponent.GetComponent<SphereCollider>().enabled = false;
             creatureComponent._textComponent.gameObject.SetActive(false);
-            creatureComponent.Status = GameActors.CreatureStatus.Death;
+            creatureComponent.Status = CreatureStatus.Death;
             tileBehavior.ResetColor();
+            FinishAction(creatureComponent);
+        }
+
+        public void LoadLobby()
+        {
+            Application.LoadLevel("Client");
         }
 
         #endregion
