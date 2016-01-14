@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Assets.Scripts.Controller;
 using Assets.Scripts.Networking;
 using UnityEngine;
 using UnityEngine.UI;
@@ -54,6 +55,13 @@ public class GamblerHelper : MonoBehaviour
     public void Start()
     {
         ExecuteOnMainThread = new Queue<Action>();
+
+        if (Assets.Scripts.Networking.Network.Instance.ClientPlayer == null) return;
+        GameFlow.Instance.IsGameCreator = false;
+        GameFlow.Instance.RoomName = "";
+        var remoteMethod = new RemoteInvokeMethod("BoardBehavior", Command.GetLobbies);
+        var bytes = RemoteInvokeMethod.WriteToStream(remoteMethod);
+        Assets.Scripts.Networking.Network.Instance.Client.Send(bytes, bytes.Length, 0);
     }
 
     public void Update()

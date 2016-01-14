@@ -29,7 +29,8 @@
         GameIsReady,
         SelectUnits,
         SendUnits,
-        EndGame
+        EndGame,
+        GetLobbies
     };
 
     public enum Response

@@ -2,7 +2,6 @@
 using GameActors;
 using Assets.Scripts.Networking;
 using NetworkTypes;
-using Assets.Scripts.Controller;
 using Assets.Scripts.Model;
 
 namespace Events

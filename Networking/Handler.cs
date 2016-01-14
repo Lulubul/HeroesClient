@@ -168,6 +168,14 @@ namespace Assets.Scripts.Networking
             });
         }
 
+        public void GetLobbies(List<SerializableType> lobbies)
+        {
+            _helper.ExecuteOnMainThread.Enqueue(() =>
+            {
+                _helper.HideLogin(lobbies, Network.Instance.ClientPlayer.Name);
+            });
+        }
+
         public void Start(List<SerializableType> playerList)
         {
             GameFlow.Instance.MessageType = MessageType.Network;
